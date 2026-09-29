@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explorador e Intérprete de la Distribución Normal</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.4);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(156, 163, 175, 0.6);
+        }
+        canvas {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-900 text-slate-100 font-sans flex flex-col antialiased selection:bg-blue-500 selection:text-white">
+
+    <!-- Header / Navbar -->
+    <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur px-4 py-3 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30">
+                <i data-lucide="activity" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-base md:text-lg text-slate-100 leading-tight">Distribución Normal: Graficador &amp; Intérprete</h1>
+                <p class="text-xs text-slate-400 hidden sm:block">Herramienta interactiva para análisis probabilístico y estadístico de la Campana de Gauss</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-2">
+            <button id="btnResetAll" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 flex items-center gap-1.5 transition-colors">
+                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                <span>Reiniciar</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+
+        <!-- Sidebar / Panel de Control -->
+        <aside class="w-full lg:w-96 bg-slate-950 border-r border-slate-800 flex flex-col h-auto lg:h-full overflow-y-auto shrink-0">
+            
+            <div class="p-4 space-y-6">
+                
+                <!-- Presets Rápidos -->
+                <div>
+                    <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-2 flex items-center gap-1.5">
+                        <i data-lucide="bookmark" class="w-3.5 h-3.5 text-blue-400"></i> Casos Frecuentes / Presets
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setPreset('standard')" class="p-2 text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-lg text-xs transition-all">
+                            <div class="font-medium text-slate-200">Estándar Z</div>
+                            <div class="text-slate-400 text-[10px]">μ = 0, σ = 1</div>
+                        </button>
+                        <button onclick="setPreset('iq')" class="p-2 text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-lg text-xs transition-all">
+                            <div class="font-medium text-slate-200">CI Humano</div>
+                            <div class="text-slate-400 text-[10px]">μ = 100, σ = 15</div>
+                        </button>
+                        <button onclick="setPreset('narrow')" class="p-2 text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-lg text-xs transition-all">
+                            <div class="font-medium text-slate-200">Baja Dispersión</div>
+                            <div class="text-slate-400 text-[10px]">μ = 0, σ = 0.4</div>
+                        </button>
+                        <button onclick="setPreset('wide')" class="p-2 text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-lg text-xs transition-all">
+                            <div class="font-medium text-slate-200">Alta Dispersión</div>
+                            <div class="text-slate-400 text-[10px]">μ = 0, σ = 3</div>
+                        </button>
+                    </div>
+                </div>
+
+                <hr class="border-slate-800">
+
+                <!-- Parámetros de la Distribución -->
+                <div class="space-y-4">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 block flex items-center gap-1.5">
+                        <i data-lucide="sliders" class="w-3.5 h-3.5 text-blue-400"></i> Parámetros de la Función
+                    </label>
+
+                    <!-- Media (Mu) -->
+                    <div class="bg-slate-900 p-3 rounded-lg border border-slate-800 space-y-2">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-medium text-slate-300">Media (μ)</span>
+                            <input type="number" id="inputMean" step="0.1" value="0" class="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-0.5 text-right text-blue-400 font-mono text-xs focus:outline-none focus:border-blue-500">
+                        </div>
+                        <input type="range" id="sliderMean" min="-10" max="10" step="0.1" value="0" class="w-full accent-blue-500 bg-slate-950 h-1.5 rounded-lg appearance-none cursor-pointer">
+                    </div>
+
+                    <!-- Desviación Estándar (Sigma) -->
+                    <div class="bg-slate-900 p-3 rounded-lg border border-slate-800 space-y-2">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-medium text-slate-300">Desviación Estándar (σ)</span>
+                            <input type="number" id="inputStd" step="0.1" min="0.1" value="1" class="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-0.5 text-right text-emerald-400 font-mono text-xs focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <input type="range" id="sliderStd" min="0.1" max="10" step="0.1" value="1" class="w-full accent-emerald-500 bg-slate-950 h-1.5 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                </div>
+
+                <hr class="border-slate-800">
+
+                <!-- Cálculo de Probabilidad (Área Bajo la Curva) -->
+                <div class="space-y-4">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 block flex items-center gap-1.5">
+                        <i data-lucide="pie-chart" class="w-3.5 h-3.5 text-blue-400"></i> Intervalo &amp; Probabilidad
+                    </label>
+
+                    <div class="bg-slate-900 p-3 rounded-lg border border-slate-800 space-y-3">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-300">Tipo de Región:</span>
+                            <select id="probMode" class="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1 focus:outline-none focus:border-blue-500">
+                                <option value="between">Entre X1 y X2 [X1 ≤ X ≤ X2]</option>
+                                <option value="lessThan">Menor que X2 [X ≤ X2]</option>
+                                <option value="greaterThan">Mayor que X1 [X ≥ X1]</option>
+                                <option value="empirical">Regla Empírica (1σ, 2σ, 3σ)</option>
+                            </select>
+                        </div>
+
+                        <!-- Límites X1 y X2 -->
+                        <div id="intervalControls" class="grid grid-cols-2 gap-2 pt-1">
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-1">Límite X1</label>
+                                <input type="number" id="inputX1" step="0.1" value="-1" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs font-mono">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-1">Límite X2</label>
+                                <input type="number" id="inputX2" step="0.1" value="1" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs font-mono">
+                            </div>
+                        </div>
+
+                        <!-- Selector para Regla Empírica -->
+                        <div id="empiricalControls" class="hidden pt-1">
+                            <label class="text-[10px] text-slate-400 block mb-1">Nivel de Desviación:</label>
+                            <div class="grid grid-cols-3 gap-1">
+                                <button onclick="setEmpirical(1)" class="py-1 bg-slate-950 border border-slate-700 hover:border-blue-500 text-xs rounded text-slate-300">±1σ (68.27%)</button>
+                                <button onclick="setEmpirical(2)" class="py-1 bg-slate-950 border border-slate-700 hover:border-blue-500 text-xs rounded text-slate-300">±2σ (95.45%)</button>
+                                <button onclick="setEmpirical(3)" class="py-1 bg-slate-950 border border-slate-700 hover:border-blue-500 text-xs rounded text-slate-300">±3σ (99.73%)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-slate-800">
+
+                <!-- Opciones Visuales -->
+                <div class="space-y-2">
+                    <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 block flex items-center gap-1.5">
+                        <i data-lucide="eye" class="w-3.5 h-3.5 text-blue-400"></i> Elementos Visibles
+                    </label>
+
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+                            <input type="checkbox" id="chkGrid" checked class="rounded bg-slate-950 border-slate-700 text-blue-600 focus:ring-0">
+                            <span>Grilla y Ejes</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+                            <input type="checkbox" id="chkInflection" checked class="rounded bg-slate-950 border-slate-700 text-blue-600 focus:ring-0">
+                            <span>Puntos Inflexión</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+                            <input type="checkbox" id="chkSigmaLines" checked class="rounded bg-slate-950 border-slate-700 text-blue-600 focus:ring-0">
+                            <span>Líneas σ</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+                            <input type="checkbox" id="chkTooltip" checked class="rounded bg-slate-950 border-slate-700 text-blue-600 focus:ring-0">
+                            <span>Tooltip en Hover</span>
+                        </label>
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+
+        <!-- Canvas and Analysis Area -->
+        <main class="flex-1 flex flex-col h-full bg-slate-950 overflow-y-auto">
+            
+            <!-- Lienzo Interactivo -->
+            <div class="relative flex-1 min-h-[380px] bg-slate-950 border-b border-slate-800 flex items-center justify-center overflow-hidden">
+                <canvas id="mainCanvas" class="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+                
+                <!-- Floating Canvas Controls -->
+                <div class="absolute top-3 right-3 flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 p-1 rounded-lg backdrop-blur shadow-lg">
+                    <button id="btnZoomIn" title="Acercar" class="p-1.5 hover:bg-slate-800 text-slate-300 rounded transition-colors">
+                        <i data-lucide="zoom-in" class="w-4 h-4"></i>
+                    </button>
+                    <button id="btnZoomOut" title="Alejar" class="p-1.5 hover:bg-slate-800 text-slate-300 rounded transition-colors">
+                        <i data-lucide="zoom-out" class="w-4 h-4"></i>
+                    </button>
+                    <div class="w-px h-4 bg-slate-800 my-auto"></div>
+                    <button id="btnResetView" title="Restablecer Vista" class="p-1.5 hover:bg-slate-800 text-slate-300 rounded transition-colors">
+                        <i data-lucide="maximize-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Legend Indicator -->
+                <div class="absolute bottom-3 left-3 bg-slate-900/80 border border-slate-800/80 px-3 py-1.5 rounded-lg text-[11px] text-slate-400 backdrop-blur flex items-center gap-3 pointer-events-none">
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-0.5 bg-blue-500 rounded-full inline-block"></span> f(x) Gaussiana</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-blue-500/30 border border-blue-500/50 rounded-sm inline-block"></span> Área / Probabilidad</span>
+                </div>
+            </div>
+
+            <!-- Panel de Análisis y Explicación -->
+            <div class="p-4 md:p-6 space-y-6 max-w-6xl w-full mx-auto">
+                
+                <!-- Summary Metrics Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                    
+                    <div class="bg-slate-900 border border-slate-800 p-3.5 rounded-xl">
+                        <div class="text-[11px] text-slate-400 font-medium">Probabilidad P(X)</div>
+                        <div id="metricProb" class="text-xl font-bold text-blue-400 font-mono mt-0.5">68.27%</div>
+                        <div id="metricProbDecimal" class="text-[10px] text-slate-500 font-mono">p = 0.682689</div>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 p-3.5 rounded-xl">
+                        <div class="text-[11px] text-slate-400 font-medium">Altura Máxima f(μ)</div>
+                        <div id="metricMaxY" class="text-xl font-bold text-emerald-400 font-mono mt-0.5">0.3989</div>
+                        <div class="text-[10px] text-slate-500">Ocurre en x = μ</div>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 p-3.5 rounded-xl">
+                        <div class="text-[11px] text-slate-400 font-medium">Puntos de Inflexión</div>
+                        <div id="metricInflection" class="text-sm font-semibold text-slate-200 font-mono mt-1">[-1.00, 1.00]</div>
+                        <div class="text-[10px] text-slate-500">Ubicados en μ ± σ</div>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 p-3.5 rounded-xl">
+                        <div class="text-[11px] text-slate-400 font-medium">Valores Z (Estandarizados)</div>
+                        <div id="metricZValues" class="text-sm font-semibold text-amber-400 font-mono mt-1">Z1: -1.00 | Z2: 1.00</div>
+                        <div class="text-[10px] text-slate-500">Z = (X - μ) / σ</div>
+                    </div>
+
+                </div>
+
+                <!-- Tabs para Método & Explicación -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                    
+                    <div class="flex border-b border-slate-800 bg-slate-950/50">
+                        <button onclick="switchTab('stepByStep')" id="tabBtnStep" class="px-4 py-2.5 text-xs font-semibold text-blue-400 border-b-2 border-blue-500 flex items-center gap-2">
+                            <i data-lucide="book-open" class="w-4 h-4"></i> Paso a Paso (Estandarización Z)
+                        </button>
+                        <button onclick="switchTab('properties')" id="tabBtnProp" class="px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-2">
+                            <i data-lucide="binary" class="w-4 h-4"></i> Propiedades y Ecuación
+                        </button>
+                    </div>
+
+                    <div class="p-4 md:p-5">
+                        
+                        <!-- TAB 1: Paso a Paso -->
+                        <div id="tabStepByStep" class="space-y-4">
+                            <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                                Cálculo Detallado de Probabilidad
+                            </h3>
+
+                            <div class="space-y-3 text-xs text-slate-300">
+                                
+                                <!-- Step 1 -->
+                                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800/80 space-y-1">
+                                    <div class="font-semibold text-blue-400">Paso 1: Identificación de Parámetros</div>
+                                    <p class="text-slate-400">Media ($\mu$) = <span id="stepMu" class="font-mono text-slate-200">0</span>, Desviación Estándar ($\sigma$) = <span id="stepSigma" class="font-mono text-slate-200">1</span>.</p>
+                                </div>
+
+                                <!-- Step 2 -->
+                                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800/80 space-y-1">
+                                    <div class="font-semibold text-blue-400">Paso 2: Transformación a Puntuación Z (Estandarización)</div>
+                                    <p class="text-slate-400 mb-2">Convertimos la variable aleatoria $X$ a la distribución estándar $Z \sim \mathcal{N}(0, 1)$ mediante la fórmula:</p>
+                                    <div class="bg-slate-900 p-2 rounded text-center font-mono text-slate-200">
+                                        Z = (X - μ) / σ
+                                    </div>
+                                    <div id="stepZCalc" class="mt-2 font-mono text-amber-300 text-[11px] bg-slate-900/50 p-2 rounded">
+                                    </div>
+                                </div>
+
+                                <!-- Step 3 -->
+                                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800/80 space-y-1">
+                                    <div class="font-semibold text-blue-400">Paso 3: Integración y Probabilidad Acumulada Φ(Z)</div>
+                                    <p class="text-slate-400">El área requerida se obtiene calculando la Función de Distribución Acumulada (CDF):</p>
+                                    <div id="stepCDFCalc" class="font-mono text-emerald-300 text-[11px] bg-slate-900/50 p-2 rounded mt-1">
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- TAB 2: Propiedades -->
+                        <div id="tabProperties" class="hidden space-y-4">
+                            <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                Función de Densidad de Probabilidad (PDF)
+                            </h3>
+
+                            <div class="bg-slate-950 p-3 rounded-lg border border-slate-800/80 text-center font-mono text-sm text-slate-200">
+                                f(x) = (1 / (σ √(2π))) · e<sup>- (1/2) ((x - μ) / σ)²</sup>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800/80 space-y-1">
+                                    <div class="font-semibold text-slate-200">Simetría &amp; Tendencia Central</div>
+                                    <p class="text-slate-400">La curva es unimodal y perfectamente simétrica respecto a la media $x = \mu$. La media, mediana y moda coinciden en el mismo punto central.</p>
+                                </div>
+                                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800/80 space-y-1">
+                                    <div class="font-semibold text-slate-200">Comportamiento Asintótico</div>
+                                    <p class="text-slate-400">Las colas de la función se aproximan asintóticamente al eje $X$ sin llegar a tocarlo jamás ($f(x) > 0$ para todo $x \in \mathbb{R}$).</p>
+                                </div>
+                                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800/80 space-y-1">
+                                    <div class="font-semibold text-slate-200">Área Total Bajo la Curva</div>
+                                    <p class="text-slate-400">El área total bajo toda la función de densidad es idénticamente igual a 1 (100% de la probabilidad total espacio muestral).</p>
+                                </div>
+                                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800/80 space-y-1">
+                                    <div class="font-semibold text-slate-200">Inflexión y Curvatura</div>
+                                    <p class="text-slate-400">La concavidad de la función cambia de convexa a cóncava exactamente en los puntos $x = \mu - \sigma$ y $x = \mu + \sigma$.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Application Scripting -->
+    <script>
+        const state = {
+            mean: 0,
+            std: 1,
+            probMode: 'between',
+            x1: -1,
+            x2: 1,
+            options: {
+                showGrid: true,
+                showInflection: true,
+                showSigmaLines: true,
+                showTooltip: true
+            },
+            view: {
+                scaleX: 60,
+                scaleY: 600,
+                offsetX: 0,
+                offsetY: 0,
+                isDragging: false,
+                startX: 0,
+                startY: 0
+            },
+            hover: {
+                active: false,
+                xVal: 0,
+                yVal: 0,
+                canvasX: 0,
+                canvasY: 0
+            }
+        };
+
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const inputMean = document.getElementById('inputMean');
+        const sliderMean = document.getElementById('sliderMean');
+        const inputStd = document.getElementById('inputStd');
+        const sliderStd = document.getElementById('sliderStd');
+        const probModeSelect = document.getElementById('probMode');
+        const inputX1 = document.getElementById('inputX1');
+        const inputX2 = document.getElementById('inputX2');
+        const intervalControls = document.getElementById('intervalControls');
+        const empiricalControls = document.getElementById('empiricalControls');
+
+        const chkGrid = document.getElementById('chkGrid');
+        const chkInflection = document.getElementById('chkInflection');
+        const chkSigmaLines = document.getElementById('chkSigmaLines');
+        const chkTooltip = document.getElementById('chkTooltip');
+
+        function normalPDF(x, mean, std) {
+            const coeff = 1 / (std * Math.sqrt(2 * Math.PI));
+            const exponent = -0.5 * Math.pow((x - mean) / std, 2);
+            return coeff * Math.exp(exponent);
+        }
+
+        function erf(x) {
+            const a1 =  0.254829592;
+            const a2 = -0.284496736;
+            const a3 =  1.421413741;
+            const a4 = -1.453152027;
+            const a5 =  1.061405429;
+            const p  =  0.3275911;
+
+            const sign = (x < 0) ? -1 : 1;
+            x = Math.abs(x);
+
+            const t = 1.0 / (1.0 + p * x);
+            const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+
+            return sign * y;
+        }
+
+        function standardCDF(z) {
+            return 0.5 * (1 + erf(z / Math.sqrt(2)));
+        }
+
+        function calculateProbability() {
+            const z1 = (state.x1 - state.mean) / state.std;
+            const z2 = (state.x2 - state.mean) / state.std;
+
+            let prob = 0;
+            if (state.probMode === 'between' || state.probMode === 'empirical') {
+                prob = standardCDF(z2) - standardCDF(z1);
+            } else if (state.probMode === 'lessThan') {
+                prob = standardCDF(z2);
+            } else if (state.probMode === 'greaterThan') {
+                prob = 1 - standardCDF(z1);
+            }
+
+            return {
+                prob: Math.max(0, Math.min(1, prob)),
+                z1,
+                z2,
+                cdf1: standardCDF(z1),
+                cdf2: standardCDF(z2)
+            };
+        }
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            draw();
+        }
+
+        function toCanvasX(x) {
+            const centerX = canvas.width / (2 * window.devicePixelRatio) + state.view.offsetX;
+            return centerX + (x - state.mean) * state.view.scaleX;
+        }
+
+        function toCanvasY(y) {
+            const centerY = canvas.height / (1.25 * window.devicePixelRatio) + state.view.offsetY;
+            return centerY - y * state.view.scaleY;
+        }
+
+        function toMathX(canvasX) {
+            const centerX = canvas.width / (2 * window.devicePixelRatio) + state.view.offsetX;
+            return state.mean + (canvasX - centerX) / state.view.scaleX;
+        }
+
+        function draw() {
+            const width = canvas.width / window.devicePixelRatio;
+            const height = canvas.height / window.devicePixelRatio;
+
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, width, height);
+
+            if (state.options.showGrid) {
+                drawGrid(width, height);
+            }
+
+            drawShadedArea(width, height);
+            drawGaussianCurve(width, height);
+            drawAnnotations(width, height);
+
+            if (state.options.showTooltip && state.hover.active) {
+                drawTooltip();
+            }
+        }
+
+        function drawGrid(width, height) {
+            ctx.save();
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            ctx.fillStyle = '#64748b';
+            ctx.font = '10px monospace';
+
+            const originY = toCanvasY(0);
+            const originX = toCanvasX(state.mean);
+
+            let stepX = 1;
+            if (state.view.scaleX * state.std < 30) stepX = 2;
+            if (state.view.scaleX * state.std < 15) stepX = 5;
+            if (state.view.scaleX * state.std > 120) stepX = 0.5;
+
+            const minX = toMathX(0);
+            const maxX = toMathX(width);
+            const startX = Math.floor(minX / stepX) * stepX;
+
+            for (let x = startX; x <= maxX; x += stepX) {
+                const cx = toCanvasX(x);
+                ctx.beginPath();
+                ctx.moveTo(cx, 0);
+                ctx.lineTo(cx, height);
+                ctx.stroke();
+
+                if (Math.abs(cx - originX) > 2 || x === state.mean) {
+                    ctx.fillText(x.toFixed(1), cx - 10, Math.min(Math.max(originY + 15, 20), height - 10));
+                }
+            }
+
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(0, originY);
+            ctx.lineTo(width, originY);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(originX, 0);
+            ctx.lineTo(originX, height);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function drawGaussianCurve(width, height) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 3;
+
+            const stepPixel = 2;
+            let first = true;
+
+            for (let px = 0; px <= width; px += stepPixel) {
+                const xVal = toMathX(px);
+                const yVal = normalPDF(xVal, state.mean, state.std);
+                const py = toCanvasY(yVal);
+
+                if (first) {
+                    ctx.moveTo(px, py);
+                    first = false;
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            }
+
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawShadedArea(width, height) {
+            ctx.save();
+            ctx.beginPath();
+
+            const baselineY = toCanvasY(0);
+            let startMathX = state.x1;
+            let endMathX = state.x2;
+
+            if (state.probMode === 'lessThan') {
+                startMathX = toMathX(-50);
+            } else if (state.probMode === 'greaterThan') {
+                endMathX = toMathX(width + 50);
+            }
+
+            const startPx = Math.max(0, toCanvasX(startMathX));
+            const endPx = Math.min(width, toCanvasX(endMathX));
+
+            ctx.moveTo(startPx, baselineY);
+
+            for (let px = startPx; px <= endPx; px += 2) {
+                const xVal = toMathX(px);
+                const yVal = normalPDF(xVal, state.mean, state.std);
+                const py = toCanvasY(yVal);
+                ctx.lineTo(px, py);
+            }
+
+            ctx.lineTo(endPx, baselineY);
+            ctx.closePath();
+
+            const gradient = ctx.createLinearGradient(0, 0, 0, height);
+            gradient.addColorStop(0, 'rgba(59, 130, 246, 0.45)');
+            gradient.addColorStop(1, 'rgba(59, 130, 246, 0.05)');
+
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(96, 165, 250, 0.8)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function drawAnnotations(width, height) {
+            ctx.save();
+
+            const originY = toCanvasY(0);
+
+            if (state.options.showSigmaLines) {
+                for (let k = -3; k <= 3; k++) {
+                    if (k === 0) continue;
+                    const xSigma = state.mean + k * state.std;
+                    const cx = toCanvasX(xSigma);
+                    const cy = toCanvasY(normalPDF(xSigma, state.mean, state.std));
+
+                    ctx.strokeStyle = (Math.abs(k) === 1) ? 'rgba(16, 185, 129, 0.4)' : 'rgba(148, 163, 184, 0.2)';
+                    ctx.setLineDash([3, 3]);
+                    ctx.beginPath();
+                    ctx.moveTo(cx, originY);
+                    ctx.lineTo(cx, cy);
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = '9px monospace';
+                    ctx.fillText(`${k > 0 ? '+' : ''}${k}σ`, cx - 8, originY + 28);
+                }
+                ctx.setLineDash([]);
+            }
+
+            if (state.options.showInflection) {
+                [-1, 1].forEach(sign => {
+                    const xInf = state.mean + sign * state.std;
+                    const yInf = normalPDF(xInf, state.mean, state.std);
+                    const cx = toCanvasX(xInf);
+                    const cy = toCanvasY(yInf);
+
+                    ctx.fillStyle = '#10b981';
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 4.5, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.strokeStyle = '#020617';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                });
+            }
+
+            const peakY = normalPDF(state.mean, state.mean, state.std);
+            const peakCx = toCanvasX(state.mean);
+            const peakCy = toCanvasY(peakY);
+
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath();
+            ctx.arc(peakCx, peakCy, 5, 0, 2 * Math.PI);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawTooltip() {
+            const { xVal, yVal, canvasX, canvasY } = state.hover;
+
+            ctx.save();
+            
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.arc(canvasX, canvasY, 5, 0, 2 * Math.PI);
+            ctx.fill();
+
+            const text1 = `X = ${xVal.toFixed(3)}`;
+            const text2 = `f(X) = ${yVal.toFixed(4)}`;
+            ctx.font = '11px monospace';
+            const boxWidth = 110;
+            const boxHeight = 42;
+            
+            let boxX = canvasX + 12;
+            let boxY = canvasY - 20;
+
+            if (boxX + boxWidth > canvas.width / window.devicePixelRatio) {
+                boxX = canvasX - boxWidth - 12;
+            }
+
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillText(text1, boxX + 8, boxY + 16);
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText(text2, boxX + 8, boxY + 32);
+
+            ctx.restore();
+        }
+
+        function updateAnalysis() {
+            const res = calculateProbability();
+
+            document.getElementById('metricProb').innerText = `${(res.prob * 100).toFixed(2)}%`;
+            document.getElementById('metricProbDecimal').innerText = `p = ${res.prob.toFixed(6)}`;
+
+            const maxY = normalPDF(state.mean, state.mean, state.std);
+            document.getElementById('metricMaxY').innerText = maxY.toFixed(4);
+
+            const infL = (state.mean - state.std).toFixed(2);
+            const infR = (state.mean + state.std).toFixed(2);
+            document.getElementById('metricInflection').innerText = `[${infL}, ${infR}]`;
+
+            document.getElementById('metricZValues').innerText = `Z1: ${res.z1.toFixed(2)} | Z2: ${res.z2.toFixed(2)}`;
+
+            document.getElementById('stepMu').innerText = state.mean;
+            document.getElementById('stepSigma').innerText = state.std;
+
+            const zHtml = `
+                <div>• Z1 = (${state.x1} - ${state.mean}) / ${state.std} = <strong>${res.z1.toFixed(4)}</strong></div>
+                <div>• Z2 = (${state.x2} - ${state.mean}) / ${state.std} = <strong>${res.z2.toFixed(4)}</strong></div>
+            `;
+            document.getElementById('stepZCalc').innerHTML = zHtml;
+
+            let cdfHtml = '';
+            if (state.probMode === 'between' || state.probMode === 'empirical') {
+                cdfHtml = `
+                    P(${state.x1} ≤ X ≤ ${state.x2}) = P(${res.z1.toFixed(2)} ≤ Z ≤ ${res.z2.toFixed(2)})<br>
+                    = Φ(Z2) - Φ(Z1) = ${res.cdf2.toFixed(5)} - ${res.cdf1.toFixed(5)} = <strong class="text-emerald-400">${res.prob.toFixed(5)}</strong>
+                `;
+            } else if (state.probMode === 'lessThan') {
+                cdfHtml = `
+                    P(X ≤ ${state.x2}) = P(Z ≤ ${res.z2.toFixed(2)}) = Φ(${res.z2.toFixed(2)}) = <strong class="text-emerald-400">${res.prob.toFixed(5)}</strong>
+                `;
+            } else if (state.probMode === 'greaterThan') {
+                cdfHtml = `
+                    P(X ≥ ${state.x1}) = 1 - P(Z ≤ ${res.z1.toFixed(2)}) = 1 - Φ(${res.z1.toFixed(2)})<br>
+                    = 1 - ${res.cdf1.toFixed(5)} = <strong class="text-emerald-400">${res.prob.toFixed(5)}</strong>
+                `;
+            }
+            document.getElementById('stepCDFCalc').innerHTML = cdfHtml;
+
+            draw();
+        }
+
+        function syncInputs() {
+            state.mean = parseFloat(inputMean.value) || 0;
+            state.std = Math.max(0.1, parseFloat(inputStd.value) || 1);
+            state.x1 = parseFloat(inputX1.value) || 0;
+            state.x2 = parseFloat(inputX2.value) || 0;
+
+            sliderMean.value = state.mean;
+            sliderStd.value = state.std;
+
+            updateAnalysis();
+        }
+
+        inputMean.addEventListener('input', () => { sliderMean.value = inputMean.value; syncInputs(); });
+        sliderMean.addEventListener('input', () => { inputMean.value = sliderMean.value; syncInputs(); });
+
+        inputStd.addEventListener('input', () => { sliderStd.value = inputStd.value; syncInputs(); });
+        sliderStd.addEventListener('input', () => { inputStd.value = sliderStd.value; syncInputs(); });
+
+        inputX1.addEventListener('input', syncInputs);
+        inputX2.addEventListener('input', syncInputs);
+
+        probModeSelect.addEventListener('change', (e) => {
+            state.probMode = e.target.value;
+            if (state.probMode === 'empirical') {
+                intervalControls.classList.add('hidden');
+                empiricalControls.classList.remove('hidden');
+                setEmpirical(1);
+            } else {
+                intervalControls.classList.remove('hidden');
+                empiricalControls.classList.add('hidden');
+            }
+            syncInputs();
+        });
+
+        window.setPreset = function(preset) {
+            if (preset === 'standard') {
+                state.mean = 0; state.std = 1; state.x1 = -1; state.x2 = 1;
+            } else if (preset === 'iq') {
+                state.mean = 100; state.std = 15; state.x1 = 85; state.x2 = 115;
+            } else if (preset === 'narrow') {
+                state.mean = 0; state.std = 0.4; state.x1 = -0.4; state.x2 = 0.4;
+            } else if (preset === 'wide') {
+                state.mean = 0; state.std = 3; state.x1 = -3; state.x2 = 3;
+            }
+            
+            inputMean.value = state.mean;
+            inputStd.value = state.std;
+            inputX1.value = state.x1;
+            inputX2.value = state.x2;
+            sliderMean.value = state.mean;
+            sliderStd.value = state.std;
+
+            resetView();
+            syncInputs();
+        };
+
+        window.setEmpirical = function(nSigma) {
+            state.x1 = state.mean - nSigma * state.std;
+            state.x2 = state.mean + nSigma * state.std;
+            inputX1.value = state.x1;
+            inputX2.value = state.x2;
+            syncInputs();
+        };
+
+        chkGrid.addEventListener('change', (e) => { state.options.showGrid = e.target.checked; draw(); });
+        chkInflection.addEventListener('change', (e) => { state.options.showInflection = e.target.checked; draw(); });
+        chkSigmaLines.addEventListener('change', (e) => { state.options.showSigmaLines = e.target.checked; draw(); });
+        chkTooltip.addEventListener('change', (e) => { state.options.showTooltip = e.target.checked; draw(); });
+
+        canvas.addEventListener('mousedown', (e) => {
+            state.view.isDragging = true;
+            state.view.startX = e.clientX - state.view.offsetX;
+            state.view.startY = e.clientY - state.view.offsetY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (state.view.isDragging) {
+                state.view.offsetX = e.clientX - state.view.startX;
+                state.view.offsetY = e.clientY - state.view.startY;
+                draw();
+            } else if (mouseX >= 0 && mouseX <= rect.width && mouseY >= 0 && mouseY <= rect.height) {
+                const xVal = toMathX(mouseX);
+                const yVal = normalPDF(xVal, state.mean, state.std);
+                state.hover = {
+                    active: true,
+                    xVal,
+                    yVal,
+                    canvasX: mouseX,
+                    canvasY: toCanvasY(yVal)
+                };
+                draw();
+            } else if (state.hover.active) {
+                state.hover.active = false;
+                draw();
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            state.view.isDragging = false;
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+            state.view.scaleX *= zoomFactor;
+            state.view.scaleY *= zoomFactor;
+            draw();
+        }, { passive: false });
+
+        document.getElementById('btnZoomIn').addEventListener('click', () => {
+            state.view.scaleX *= 1.2;
+            state.view.scaleY *= 1.2;
+            draw();
+        });
+
+        document.getElementById('btnZoomOut').addEventListener('click', () => {
+            state.view.scaleX *= 0.8;
+            state.view.scaleY *= 0.8;
+            draw();
+        });
+
+        function resetView() {
+            state.view.scaleX = 60 / (state.std > 3 ? state.std / 2 : 1);
+            state.view.scaleY = 600 * (state.std < 1 ? state.std : 1);
+            state.view.offsetX = 0;
+            state.view.offsetY = 0;
+            draw();
+        }
+
+        document.getElementById('btnResetView').addEventListener('click', resetView);
+        document.getElementById('btnResetAll').addEventListener('click', () => setPreset('standard'));
+
+        window.switchTab = function(tabName) {
+            const tabStep = document.getElementById('tabStepByStep');
+            const tabProp = document.getElementById('tabProperties');
+            const btnStep = document.getElementById('tabBtnStep');
+            const btnProp = document.getElementById('tabBtnProp');
+
+            if (tabName === 'stepByStep') {
+                tabStep.classList.remove('hidden');
+                tabProp.classList.add('hidden');
+                btnStep.className = 'px-4 py-2.5 text-xs font-semibold text-blue-400 border-b-2 border-blue-500 flex items-center gap-2';
+                btnProp.className = 'px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-2';
+            } else {
+                tabStep.classList.add('hidden');
+                tabProp.classList.remove('hidden');
+                btnProp.className = 'px-4 py-2.5 text-xs font-semibold text-blue-400 border-b-2 border-blue-500 flex items-center gap-2';
+                btnStep.className = 'px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center gap-2';
+            }
+        };
+
+        window.addEventListener('resize', resizeCanvas);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            resizeCanvas();
+            syncInputs();
+        });
+    </script>
+</body>
+</html>
